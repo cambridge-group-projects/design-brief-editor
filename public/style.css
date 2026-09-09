@@ -1,0 +1,247 @@
+:root {
+  color-scheme: light dark;
+  --border: #d0d0d0;
+  --bg: #ffffff;
+  --bg-alt: #f5f5f5;
+  --text: #1a1a1a;
+  --muted: #666;
+  --accent: #2563eb;
+  --danger: #b91c1c;
+  --ok: #15803d;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --border: #3a3a3a;
+    --bg: #1e1e1e;
+    --bg-alt: #262626;
+    --text: #e8e8e8;
+    --muted: #999;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+#app { display: flex; height: 100vh; }
+
+#sidebar {
+  width: 340px;
+  min-width: 340px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-alt);
+}
+
+#sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+}
+.tab-btn {
+  flex: 1;
+  padding: 8px;
+  font-size: 12px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  color: var(--muted);
+}
+.tab-btn.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+.tab-panel { display: none; flex-direction: column; min-height: 0; flex: 1; }
+.tab-panel.active { display: flex; }
+
+#index-preview {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+#index-preview h1 { font-size: 16px; }
+#index-preview h2 { font-size: 14px; margin-top: 22px; }
+#index-preview h3 {
+  font-size: 13px;
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+#index-preview ul, #index-preview ol { padding-left: 20px; margin: 6px 0; }
+#index-preview li { margin: 2px 0; }
+#index-preview a { color: var(--accent); }
+#index-preview a.wiki-link { text-decoration: none; }
+#index-preview a.wiki-link:hover { text-decoration: underline; }
+
+#index-preview li[draggable="true"] {
+  cursor: grab;
+  border-radius: 3px;
+  transition: background-color 0.1s ease;
+}
+#index-preview li[draggable="true"]:hover { background: var(--border); }
+
+/* Custom tooltip (native title can't be repositioned or styled) that
+   tracks the pointer, offset to the right — bright on purpose, since
+   draggability isn't otherwise visible on these items. */
+#drag-tooltip {
+  position: fixed;
+  max-width: 260px;
+  background: #ffe600;
+  color: #1a1a00;
+  padding: 5px 9px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.35;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  pointer-events: none;
+}
+#index-preview li.dragging { opacity: 0.4; }
+#index-preview ul.drag-over,
+#index-preview ol.drag-over {
+  outline: 2px dashed var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.list-new-btn {
+  flex: none;
+  font-size: 11px;
+  padding: 2px 7px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg);
+  color: var(--text);
+}
+.list-new-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
+#sidebar-header {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+}
+#search { flex: 1; padding: 6px 8px; font-size: 13px; }
+#new-page-btn { padding: 6px 10px; font-size: 13px; cursor: pointer; }
+
+#page-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; }
+#page-list li {
+  padding: 6px 10px;
+  font-size: 13px;
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#page-list li:hover { background: var(--border); }
+#page-list li.active { background: var(--accent); color: white; }
+
+#main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+#toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+#current-page { font-weight: 600; font-size: 14px; }
+#toolbar-actions { display: flex; gap: 8px; }
+#toolbar-actions button {
+  padding: 6px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+#save-btn { background: var(--accent); color: white; border: none; border-radius: 4px; }
+#save-btn:disabled { background: var(--border); color: var(--muted); cursor: default; }
+
+#status-bar {
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--muted);
+  min-height: 18px;
+}
+#status-bar.error { color: var(--danger); }
+#status-bar.ok { color: var(--ok); }
+
+#editor-area { flex: 1; display: flex; min-height: 0; }
+#editor {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  resize: none;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  border-right: 1px solid var(--border);
+}
+#preview {
+  flex: 1;
+  padding: 12px 20px;
+  overflow-y: auto;
+  background: var(--bg);
+}
+#preview.hidden { display: none; }
+#editor.full { border-right: none; }
+
+#preview img { max-width: 100%; }
+#preview pre { background: var(--bg-alt); padding: 10px; overflow-x: auto; }
+
+.client-chip {
+  display: inline-block;
+  margin: 8px 0;
+  padding: 5px 12px;
+  font: inherit;
+  font-size: 13px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  color: var(--text);
+  cursor: pointer;
+}
+.client-chip:hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.client-chip.add {
+  border-style: dashed;
+  color: var(--muted);
+  background: none;
+}
+
+#client-dialog {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  width: min(360px, 90vw);
+}
+#client-dialog::backdrop { background: rgba(0, 0, 0, 0.4); }
+#client-form { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+#client-form h3 { margin: 0; font-size: 15px; }
+#client-form label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+#client-form input {
+  padding: 6px 8px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg);
+  color: var(--text);
+}
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
+.dialog-actions button { padding: 6px 12px; font-size: 13px; cursor: pointer; }
+#client-save-btn { background: var(--accent); color: white; border: none; border-radius: 4px; }

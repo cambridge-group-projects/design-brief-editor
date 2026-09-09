@@ -1,0 +1,13 @@
+{
+  "name": "design-brief-editor",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Local mirror + editor for the Cambridge Group Projects wiki, syncing to GitHub.",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node server.js"
+  }
+}

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Wiki Editor</title>
+<link rel="stylesheet" href="/public/style.css" />
+</head>
+<body>
+  <div id="app">
+    <aside id="sidebar">
+      <div id="sidebar-tabs">
+        <button class="tab-btn active" data-tab="browse">Browse</button>
+        <button class="tab-btn" data-tab="all">All pages</button>
+      </div>
+
+      <div id="tab-browse" class="tab-panel active">
+        <div id="index-preview"></div>
+      </div>
+
+      <div id="tab-all" class="tab-panel">
+        <div id="sidebar-header">
+          <input id="search" type="search" placeholder="Filter pages…" />
+          <button id="new-page-btn" title="Create new page">+ New</button>
+        </div>
+        <ul id="page-list"></ul>
+      </div>
+    </aside>
+
+    <main id="main">
+      <div id="toolbar">
+        <span id="current-page">Select a page</span>
+        <div id="toolbar-actions">
+          <button id="pull-btn" title="Pull latest from GitHub">Sync ⟳</button>
+          <button id="preview-toggle-btn">Preview: split</button>
+          <button id="save-btn" disabled>Save &amp; Push</button>
+        </div>
+      </div>
+      <div id="status-bar"></div>
+      <div id="editor-area">
+        <textarea id="editor" placeholder="Select a page from the left to edit it." spellcheck="false"></textarea>
+        <div id="preview"></div>
+      </div>
+    </main>
+  </div>
+
+  <dialog id="client-dialog">
+    <form id="client-form">
+      <h3>Client information</h3>
+      <label>Name<input id="client-name" type="text" required autocomplete="off" /></label>
+      <label>Company<input id="client-company" type="text" required autocomplete="off" /></label>
+      <label>Email<input id="client-email" type="email" required autocomplete="off" /></label>
+      <div class="dialog-actions">
+        <button type="button" id="client-cancel-btn">Cancel</button>
+        <button type="submit" id="client-save-btn">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="drag-tooltip" style="display: none;"></div>
+
+  <script src="/vendor/marked.min.js"></script>
+  <script src="/public/app.js"></script>
+</body>
+</html>

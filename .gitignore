@@ -1,0 +1,6 @@
+# The wiki content itself is a separate git repo (cloned on first run),
+# not part of this tool's source.
+/wiki/
+
+node_modules/
+.DS_Store
