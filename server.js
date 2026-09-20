@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Local wiki editor: serves a browser UI over the cloned wiki git repo,
-// and on save commits + pushes the change back to GitHub.
+// Local design brief editor: serves a browser UI over the docs/ folder of the
+// cloned site repo, and on save commits + pushes the change back to GitHub.
 
 import http from 'node:http';
 import fs from 'node:fs/promises';
@@ -14,12 +14,19 @@ import readline from 'node:readline';
 const execFileP = promisify(execFile);
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const WIKI_DIR = path.join(__dirname, 'wiki');
+// The clone of the site repo, and the docs/ folder within it that holds the
+// editable pages. git commands run from PAGES_DIR, so page paths (relative to
+// it) work directly as git pathspecs.
+const SITE_DIR = path.join(__dirname, 'site');
+const PAGES_DIR = path.join(SITE_DIR, 'docs');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const VENDOR_DIR = path.join(__dirname, 'vendor');
-const WIKI_REPO_URL =
-  process.env.WIKI_REPO_URL ||
-  'https://github.com/cambridge-group-projects/cambridge-group-projects.github.io.wiki.git';
+const SITE_REPO_URL =
+  process.env.SITE_REPO_URL ||
+  'https://github.com/cambridge-group-projects/cambridge-group-projects.github.io.git';
+const BRANCH = 'main';
+// The page the Browse tab renders and the "+ New" / drag-and-drop tools edit.
+const INDEX_PAGE = 'Brief_and_client_planning.md';
 // Default to 0 (OS picks any free port) so this doesn't collide with other
 // local dev servers. Set PORT explicitly to override.
 const PORT = process.env.PORT ? Number(process.env.PORT) : 0;
@@ -33,21 +40,21 @@ const PORT = process.env.PORT ? Number(process.env.PORT) : 0;
 const HEARTBEAT_TIMEOUT_MS = 3 * 60 * 1000;
 let lastHeartbeat = Date.now();
 
-// Top-level entries in the wiki repo that are not editable pages.
-const SKIP_ENTRIES = new Set(['.git', 'assets', 'stylesheets', '.gitignore']);
+// Top-level entries in docs/ that are not editable pages.
+const SKIP_ENTRIES = new Set(['assets', 'stylesheets']);
 
 function git(args, opts = {}) {
-  return execFileP('git', args, { cwd: WIKI_DIR, ...opts });
+  return execFileP('git', args, { cwd: PAGES_DIR, ...opts });
 }
 
-// Resolve a user-supplied relative page path safely inside WIKI_DIR.
+// Resolve a user-supplied relative page path safely inside PAGES_DIR.
 function resolvePagePath(relPath) {
   if (typeof relPath !== 'string' || relPath.length === 0) {
     throw new Error('missing path');
   }
   const normalized = path.normalize(relPath).replace(/^(\.\.(\/|\\|$))+/, '');
-  const abs = path.join(WIKI_DIR, normalized);
-  const rel = path.relative(WIKI_DIR, abs);
+  const abs = path.join(PAGES_DIR, normalized);
+  const rel = path.relative(PAGES_DIR, abs);
   if (rel.startsWith('..') || path.isAbsolute(rel)) {
     throw new Error('invalid path');
   }
@@ -73,18 +80,18 @@ async function listPages() {
       }
     }
   }
-  await walk(WIKI_DIR, '');
+  await walk(PAGES_DIR, '');
   pages.sort((a, b) => a.path.localeCompare(b.path));
   return pages;
 }
 
 function commitMessageFor(relPath) {
-  return `Update ${relPath} via local wiki editor`;
+  return `Update ${relPath} via design brief editor`;
 }
 
 async function pullLatest() {
   await git(['fetch', 'origin']);
-  await git(['pull', '--ff-only', 'origin', 'master']);
+  await git(['pull', '--ff-only', 'origin', BRANCH]);
 }
 
 function withTimeout(promise, ms, label) {
@@ -124,18 +131,18 @@ async function commitAndPush(relPaths, message) {
   await git(['commit', '-m', message]);
 
   try {
-    await git(['pull', '--rebase', 'origin', 'master']);
+    await git(['pull', '--rebase', 'origin', BRANCH]);
   } catch (err) {
     // Leave the commit local; do not attempt to push over an unresolved rebase.
     await git(['rebase', '--abort']).catch(() => {});
     throw new Error(
       `Saved and committed locally, but could not sync with GitHub before push ` +
-      `(possible conflicting edit upstream). Resolve manually in the wiki/ folder.\n${err.stderr || err.message}`
+      `(possible conflicting edit upstream). Resolve manually in the site/ folder.\n${err.stderr || err.message}`
     );
   }
 
   try {
-    await git(['push', 'origin', 'master']);
+    await git(['push', 'origin', BRANCH]);
   } catch (err) {
     throw new Error(
       `Saved and committed locally, but push to GitHub failed.\n${err.stderr || err.message}`
@@ -175,7 +182,7 @@ const LIST_ITEM_RE = /^\s*(?:[-*+]|\d+[.)])\s+/;
 const ORDERED_ITEM_RE = /^\s*(\d+)[.)]\s+/;
 
 // Find the markdown list immediately following a "### <sectionHeading>"
-// line in index.md, so a new entry can be appended to it in place.
+// line in the index page, so a new entry can be appended to it in place.
 function findListBlock(lines, sectionHeading) {
   for (let i = 0; i < lines.length; i++) {
     const m = lines[i].match(/^(#{2,6})\s+(.*)$/);
@@ -192,7 +199,7 @@ function findListBlock(lines, sectionHeading) {
   return null;
 }
 
-const INDEX_ABS = path.join(WIKI_DIR, 'index.md');
+const INDEX_ABS = path.join(PAGES_DIR, INDEX_PAGE);
 
 async function readIndexLines() {
   const original = await fs.readFile(INDEX_ABS, 'utf8');
@@ -227,7 +234,7 @@ function slugifyTitle(title) {
 }
 
 // Adds "[Title](Slug) [- description]" as a new item to one of the three
-// lists on index.md, creating the linked stub page if it doesn't already
+// lists on the index page, creating the linked stub page if it doesn't already
 // exist, and publishes both in one commit.
 async function addIndexEntry(sectionHeading, rawTitle, rawDescription) {
   const title = (rawTitle || '').trim();
@@ -243,7 +250,7 @@ async function addIndexEntry(sectionHeading, rawTitle, rawDescription) {
 
   const block = findListBlock(lines, sectionHeading);
   if (!block) {
-    throw new Error(`Could not find the "${sectionHeading}" list in index.md.`);
+    throw new Error(`Could not find the "${sectionHeading}" list in ${INDEX_PAGE}.`);
   }
 
   let nextNum = 1;
@@ -266,7 +273,7 @@ async function addIndexEntry(sectionHeading, rawTitle, rawDescription) {
     createdPage = true;
   }
 
-  const relPaths = createdPage ? ['index.md', pagePath] : ['index.md'];
+  const relPaths = createdPage ? [INDEX_PAGE, pagePath] : [INDEX_PAGE];
   const result = await commitAndPush(relPaths, `Add "${title}" to ${sectionHeading}`);
 
   const verb = createdPage ? 'created' : 'linked to existing';
@@ -283,7 +290,7 @@ async function addIndexEntry(sectionHeading, rawTitle, rawDescription) {
 // Moves one item (identified by its position within fromHeading's list, as
 // last seen by the client) over to toHeading's list, re-formatted to match
 // the destination list's marker style (numbered vs bulleted). expectedContent
-// guards against moving the wrong line if index.md changed since the client
+// guards against moving the wrong line if the index page changed since the client
 // last rendered it.
 async function moveIndexEntry(fromHeading, toHeading, fromIndex, expectedContent) {
   if (!fromHeading || !toHeading) throw new Error('Missing source or destination list.');
@@ -293,7 +300,7 @@ async function moveIndexEntry(fromHeading, toHeading, fromIndex, expectedContent
   const { lines, hadTrailingNewline } = await readIndexLines();
 
   const fromBlock = findListBlock(lines, fromHeading);
-  if (!fromBlock) throw new Error(`Could not find the "${fromHeading}" list in index.md.`);
+  if (!fromBlock) throw new Error(`Could not find the "${fromHeading}" list in ${INDEX_PAGE}.`);
 
   const lineIndex = fromBlock.itemsStart + fromIndex;
   if (lineIndex < fromBlock.itemsStart || lineIndex >= fromBlock.itemsEnd) {
@@ -313,7 +320,7 @@ async function moveIndexEntry(fromHeading, toHeading, fromIndex, expectedContent
   }
 
   const toBlock = findListBlock(lines, toHeading);
-  if (!toBlock) throw new Error(`Could not find the "${toHeading}" list in index.md.`);
+  if (!toBlock) throw new Error(`Could not find the "${toHeading}" list in ${INDEX_PAGE}.`);
 
   let nextNum = 1;
   if (toBlock.ordered) {
@@ -328,7 +335,7 @@ async function moveIndexEntry(fromHeading, toHeading, fromIndex, expectedContent
   await writeIndexLines(lines, hadTrailingNewline);
 
   const label = content.length > 60 ? `${content.slice(0, 57)}...` : content;
-  const result = await commitAndPush(['index.md'], `Move "${label}" from ${fromHeading} to ${toHeading}`);
+  const result = await commitAndPush([INDEX_PAGE], `Move "${label}" from ${fromHeading} to ${toHeading}`);
 
   return {
     message: result.committed
@@ -519,32 +526,32 @@ async function ensureGitIdentity() {
   }
 }
 
-// One-time setup: clone the wiki if this is the first run on this machine.
+// One-time setup: clone the site repo if this is the first run on this machine.
 // Tries the plain clone first (works if credentials are already set up, e.g.
 // SSH keys or a cached HTTPS token); if that fails, falls back to walking
 // the person through GitHub CLI sign-in, which is the smoothest way to get
 // HTTPS git credentials working without them handling tokens by hand.
-async function ensureWikiClone() {
-  if (fss.existsSync(path.join(WIKI_DIR, '.git'))) return; // already set up
+async function ensureSiteClone() {
+  if (fss.existsSync(path.join(SITE_DIR, '.git'))) return; // already set up
 
-  if (fss.existsSync(WIKI_DIR)) {
-    const entries = await fs.readdir(WIKI_DIR);
+  if (fss.existsSync(SITE_DIR)) {
+    const entries = await fs.readdir(SITE_DIR);
     if (entries.length > 0) {
       console.error(
-        `\n'${WIKI_DIR}' already exists and isn't a git clone of the wiki.\n` +
+        `\n'${SITE_DIR}' already exists and isn't a git clone of the site repo.\n` +
         'Move or delete it, then run this again to clone fresh.\n'
       );
       process.exit(1);
     }
   }
 
-  console.log('\nFirst-time setup: this needs a local copy of the wiki. This only happens once.\n');
+  console.log('\nFirst-time setup: this needs a local copy of the site repo. This only happens once.\n');
   await ensureGitIdentity();
 
-  console.log(`\nCloning ${WIKI_REPO_URL} ...`);
+  console.log(`\nCloning ${SITE_REPO_URL} ...`);
   try {
-    await runInteractive('git', ['clone', WIKI_REPO_URL, WIKI_DIR]);
-    console.log('Wiki cloned successfully.\n');
+    await runInteractive('git', ['clone', SITE_REPO_URL, SITE_DIR]);
+    console.log('Site repo cloned successfully.\n');
     return;
   } catch {
     console.log("\nThat didn't work — most likely GitHub needs you to sign in first.\n");
@@ -560,7 +567,7 @@ async function ensureWikiClone() {
         '  other:  https://cli.github.com',
         '',
         'Alternative: create a Personal Access Token at https://github.com/settings/tokens,',
-        `then run:  git clone ${WIKI_REPO_URL} "${WIKI_DIR}"`,
+        `then run:  git clone ${SITE_REPO_URL} "${SITE_DIR}"`,
         'and run this again once that succeeds.',
         '',
       ].join('\n')
@@ -582,22 +589,22 @@ async function ensureWikiClone() {
   try {
     await runInteractive('gh', ['auth', 'setup-git']);
     console.log('\nRetrying the clone...');
-    await runInteractive('git', ['clone', WIKI_REPO_URL, WIKI_DIR]);
-    console.log('Wiki cloned successfully.\n');
+    await runInteractive('git', ['clone', SITE_REPO_URL, SITE_DIR]);
+    console.log('Site repo cloned successfully.\n');
   } catch {
-    console.error('\nStill could not clone the wiki. See the error above, fix it, then run this again.');
+    console.error('\nStill could not clone the site repo. See the error above, fix it, then run this again.');
     process.exit(1);
   }
 }
 
 async function main() {
-  await ensureWikiClone();
+  await ensureSiteClone();
 
   server.listen(PORT, () => {
     const port = server.address().port;
     const url = `http://localhost:${port}/`;
-    console.log(`Wiki editor running at ${url}`);
-    console.log(`Mirroring: ${WIKI_DIR}`);
+    console.log(`Design brief editor running at ${url}`);
+    console.log(`Editing: ${PAGES_DIR}`);
     lastHeartbeat = Date.now();
     attemptStartupSync().finally(() => openBrowser(url));
   });

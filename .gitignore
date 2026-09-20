@@ -1,5 +1,7 @@
-# The wiki content itself is a separate git repo (cloned on first run),
-# not part of this tool's source.
+# The site content itself is a separate git repo (cloned on first run),
+# not part of this tool's source. /wiki/ is the pre-restructure clone of the
+# old GitHub wiki, which may still exist on machines set up earlier.
+/site/
 /wiki/
 
 node_modules/

@@ -18,7 +18,7 @@ const clientEmailInput = document.getElementById('client-email');
 const clientCancelBtn = document.getElementById('client-cancel-btn');
 const dragTooltipEl = document.getElementById('drag-tooltip');
 
-const INDEX_PAGE_PATH = 'index.md';
+const INDEX_PAGE_PATH = 'Brief_and_client_planning.md';
 const SCROLL_TARGET_HEADING = 'Group Project Design Briefs for 2027 (work in progress)';
 
 let pages = [];
@@ -270,7 +270,7 @@ newPageBtn.addEventListener('click', async () => {
 
 searchEl.addEventListener('input', renderPageList);
 
-// --- Browse tab: index.md rendered as clickable navigation -------------
+// --- Browse tab: the index page rendered as clickable navigation -------------
 
 function normalizeText(text) {
   return text.replace(/\s+/g, ' ').trim();
@@ -319,7 +319,7 @@ function findTrackedSections(container) {
 // Attaches a "+ New" button to each of the three staging lists, so new
 // entries + their linked page can be added without leaving the index.
 // Purely a UI affordance — nothing about the button itself is written
-// back to index.md.
+// back to the index page.
 function attachListButtons(sections) {
   for (const { h3, heading } of sections) {
     const btn = document.createElement('button');
